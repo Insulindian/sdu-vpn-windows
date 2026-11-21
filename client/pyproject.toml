@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sdu-connect"
+version = "0.2.0"
+description = "山东大学 aTrust 替代：CAS 自动登录 + zju-connect 数据面"
+requires-python = ">=3.11"
+dependencies = ["requests>=2.31"]
+
+[project.optional-dependencies]
+browser = ["playwright>=1.40"]
+windows = ["pywebview>=5.0"]
+
+[project.scripts]
+sdu-connect = "sdu_connect.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["sdu_connect*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,21 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.env
+
+# Downloaded by windows\install.ps1 (upstream zju-connect release)
+client/bin/zju-connect.exe
+
+# Local runtime state (normally lives in %APPDATA%\sdu-connect)
+client/.sdu-connect-state/
+client/resource.json
+client/client_data.json
+client/endpoint_identity.json
+client/cas_browser_cookies.json
+client/proxy-original.json
+
+*.log
+*.zip
+.DS_Store
+Thumbs.db

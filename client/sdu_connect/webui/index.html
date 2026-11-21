@@ -1,0 +1,778 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SDU VPN</title>
+<style>
+  :root {
+    --bg: #f4f6fb;
+    --card: #ffffff;
+    --text: #111827;
+    --muted: #6b7280;
+    --line: #e7ebf3;
+    --blue: #204ed9;
+    --blue-soft: #eef3ff;
+    --green: #0f9d76;
+    --green-soft: #e9f9f2;
+    --red: #cf171d;
+    --red-soft: #fff0f0;
+    --shadow: 0 18px 50px rgba(20, 40, 80, 0.08);
+    --radius: 18px;
+    --font: "Segoe UI", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; min-height: 100%;
+    font-family: var(--font); color: var(--text);
+    background:
+      radial-gradient(900px 520px at 88% -10%, #e6eeff 0%, rgba(230,238,255,0) 60%),
+      radial-gradient(700px 500px at -10% 110%, #eafaf3 0%, rgba(234,250,243,0) 55%),
+      var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font-family: inherit; }
+  .app { display: flex; min-height: 100vh; }
+
+  /* ---------------- sidebar ---------------- */
+  .sidebar {
+    width: 232px; flex: 0 0 232px; min-height: 100vh;
+    padding: 26px 18px 20px;
+    background: rgba(255,255,255,.86);
+    border-right: 1px solid var(--line);
+    display: flex; flex-direction: column;
+    position: sticky; top: 0; height: 100vh;
+    backdrop-filter: blur(14px);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 0 6px; }
+  .brand-mark {
+    width: 42px; height: 42px; border-radius: 13px;
+    display: grid; place-items: center;
+    background: linear-gradient(145deg, #204ed9, #3f74ff);
+    color: #fff; font: 700 21px/1 Georgia, "Times New Roman", serif;
+    box-shadow: 0 8px 20px rgba(32,78,217,.32);
+  }
+  .brand-text { display: flex; flex-direction: column; line-height: 1.25; }
+  .brand-text b { font-size: 16px; letter-spacing: .2px; }
+  .brand-text span { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+
+  .side-status {
+    margin: 26px 4px 20px; padding: 12px 14px;
+    border: 1px solid var(--line); border-radius: 14px;
+    background: #fbfcff; display: flex; align-items: center; gap: 10px;
+  }
+  .side-status .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: #b6bdc9; box-shadow: 0 0 0 4px rgba(182,189,201,.14);
+  }
+  .side-status b { display: block; font-size: 12.5px; }
+  .side-status small { display: block; font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .side-status.connected { border-color: #cdeee3; background: var(--green-soft); }
+  .side-status.connected .dot { background: var(--green); box-shadow: 0 0 0 4px rgba(15,157,118,.16); }
+  .side-status.connecting .dot { background: var(--blue); animation: pulseDot 1.2s infinite; }
+  .side-status.error { border-color: #f4cccc; background: var(--red-soft); }
+  .side-status.error .dot { background: var(--red); }
+
+  nav { display: flex; flex-direction: column; gap: 4px; }
+  .nav {
+    border: 0; background: transparent; text-align: left;
+    padding: 10px 12px; border-radius: 10px;
+    font-size: 13px; color: #4b5563; cursor: pointer;
+  }
+  .nav:hover { background: #f4f6fb; }
+  .nav.active { background: var(--blue-soft); color: var(--blue); font-weight: 600; }
+
+  .side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding: 0 4px; }
+  .save-badge {
+    font-size: 10.5px; color: #0b7d5b; background: var(--green-soft);
+    border: 1px solid #d3f2e7; border-radius: 999px;
+    padding: 7px 10px; text-align: center; line-height: 1.4;
+  }
+  .link {
+    border: 0; background: transparent; color: var(--muted);
+    font-size: 11.5px; cursor: pointer; padding: 4px; text-align: left;
+  }
+  .link:hover { color: var(--blue); }
+
+  /* ---------------- main ---------------- */
+  main { flex: 1; min-width: 0; padding: 28px 36px 24px; max-width: 1180px; margin: 0 auto; }
+  header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+  header h1 { margin: 0; font-size: 27px; letter-spacing: -.4px; }
+  header p { margin: 6px 0 0; color: var(--muted); font-size: 12.5px; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    height: 32px; padding: 0 14px; border-radius: 999px;
+    background: #fff; border: 1px solid var(--line);
+    font-size: 12.5px; color: var(--muted);
+  }
+  .pill i { width: 8px; height: 8px; border-radius: 50%; background: #b6bdc9; }
+  .pill.connected { background: var(--green-soft); border-color: #cdeee3; color: #0b7d5b; }
+  .pill.connected i { background: var(--green); box-shadow: 0 0 0 4px rgba(15,157,118,.14); }
+  .pill.connecting { background: var(--blue-soft); border-color: #d8e3ff; color: var(--blue); }
+  .pill.connecting i { background: var(--blue); animation: pulseDot 1.2s infinite; }
+  .pill.error { background: var(--red-soft); border-color: #f4cccc; color: var(--red); }
+  .pill.error i { background: var(--red); }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+  }
+
+  /* ---------------- hero ---------------- */
+  .hero {
+    margin-top: 18px; padding: 22px 26px;
+    display: flex; align-items: center; gap: 26px;
+    flex-wrap: wrap;
+    overflow: hidden; position: relative;
+  }
+  .hero::after {
+    content: ""; position: absolute; right: -80px; top: -120px;
+    width: 340px; height: 340px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(32,78,217,.08), rgba(32,78,217,0) 65%);
+    pointer-events: none;
+  }
+  .orb {
+    width: 104px; height: 104px; flex: 0 0 104px; border-radius: 50%;
+    display: grid; place-items: center; position: relative;
+    background: radial-gradient(circle at 32% 28%, #f1f4fa, #dfe5ef 62%, #d3dae6);
+    box-shadow: inset 0 2px 10px rgba(255,255,255,.9), 0 14px 34px rgba(31,41,55,.12);
+    transition: all .35s ease;
+  }
+  .orb::before {
+    content: ""; position: absolute; inset: -10px; border-radius: 50%;
+    border: 1px solid rgba(32,78,217,.08); transition: all .35s ease;
+  }
+  .orb svg { width: 44px; height: 44px; color: #7b8494; z-index: 1; }
+  .orb.connected {
+    background: radial-gradient(circle at 32% 28%, #7ef0c6, #10b981 62%, #059669);
+    box-shadow: 0 0 0 10px rgba(16,185,129,.10), 0 18px 44px rgba(16,185,129,.35);
+  }
+  .orb.connected::before { inset: -16px; border-color: rgba(16,185,129,.20); }
+  .orb.connected svg { color: #fff; }
+  .orb.connecting {
+    background: radial-gradient(circle at 32% 28%, #9db9ff, #3f74ff 62%, #204ed9);
+    box-shadow: 0 0 0 10px rgba(32,78,217,.10), 0 18px 44px rgba(32,78,217,.30);
+    animation: bob 1.6s ease-in-out infinite;
+  }
+  .orb.connecting svg { color: #fff; }
+  .orb.error {
+    background: radial-gradient(circle at 32% 28%, #ffb4b4, #ef4444 62%, #cf171d);
+    box-shadow: 0 0 0 10px rgba(239,68,68,.10), 0 18px 44px rgba(239,68,68,.28);
+  }
+  .orb.error svg { color: #fff; }
+
+  .hero-copy { flex: 1; min-width: 0; }
+  .eyebrow { font-size: 10.5px; letter-spacing: 1.4px; text-transform: uppercase; color: #9aa3b2; }
+  .hero-copy h2 { margin: 8px 0 6px; font-size: 31px; letter-spacing: -.6px; }
+  .hero-copy p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.6; }
+  .meta { display: flex; gap: 34px; margin-top: 16px; flex-wrap: wrap; }
+  .meta span { display: block; font-size: 10.5px; color: #9aa3b2; margin-bottom: 5px; }
+  .meta b { font-size: 13.5px; font-weight: 600; }
+
+  .actions-bar { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; }
+  .actions-bar .mode-btn { flex: 1 1 220px; }
+  .actions-bar .ghost { flex: 0 0 132px; height: auto; min-height: 56px; }
+  .mode-btn {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 14px; border-radius: 14px;
+    border: 1px solid var(--line); background: #fff;
+    cursor: pointer; text-align: left; color: var(--text);
+    transition: all .16s ease;
+  }
+  .mode-btn:hover:not(:disabled) { border-color: #c6d2ea; transform: translateY(-1px); }
+  .mode-btn:disabled { opacity: .55; cursor: default; }
+  .mode-btn.active { border-color: var(--blue); background: var(--blue-soft); box-shadow: 0 8px 20px rgba(32,78,217,.12); }
+  .mode-btn.active .mode-icon { background: var(--blue); color: #fff; }
+  .mode-icon {
+    width: 34px; height: 34px; flex: 0 0 34px; border-radius: 10px;
+    display: grid; place-items: center; background: #f3f6fc; color: #52607a;
+  }
+  .mode-icon svg { width: 18px; height: 18px; }
+  .mode-btn b { display: block; font-size: 13.5px; font-weight: 600; }
+  .mode-btn small { display: block; font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .ghost {
+    height: 38px; border-radius: 12px; border: 1px solid var(--line);
+    background: #fff; color: #4b5563; font-size: 12.5px; cursor: pointer;
+    transition: all .16s ease;
+  }
+  .ghost:hover:not(:disabled) { border-color: #c6d2ea; color: var(--blue); }
+  .ghost:disabled { opacity: .55; cursor: default; }
+
+  /* ---------------- grid ---------------- */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 16px; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .card-head h3 { margin: 0; font-size: 14px; font-weight: 600; }
+  .tag {
+    font-size: 10.5px; color: var(--muted); background: #f4f6fb;
+    border-radius: 999px; padding: 4px 9px;
+  }
+  .tag.ok { color: #0b7d5b; background: var(--green-soft); }
+  .tag.bad { color: var(--red); background: var(--red-soft); }
+
+  .proxy-card { padding: 20px 24px; }
+  .endpoint {
+    margin-top: 12px; padding: 10px 12px; border-radius: 11px;
+    background: #f8fafd; border: 1px solid #eef1f7;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .endpoint span { width: 58px; font-size: 10.5px; color: #9aa3b2; }
+  .endpoint code { flex: 1; font-family: "Cascadia Mono", Consolas, monospace; font-size: 12px; color: #26324a; }
+  .endpoint button {
+    border: 0; background: transparent; color: var(--blue);
+    font-size: 11px; cursor: pointer; padding: 2px 4px;
+  }
+  .endpoint button:hover { text-decoration: underline; }
+  .hint { margin: 14px 0 0; font-size: 11.5px; line-height: 1.75; color: var(--muted); }
+  .sys-proxy {
+    display: flex; align-items: flex-start; gap: 8px;
+    margin-top: 12px; font-size: 11.5px; line-height: 1.6;
+    color: var(--muted); cursor: pointer; user-select: none;
+  }
+  .sys-proxy input { margin-top: 2px; accent-color: var(--blue); cursor: pointer; }
+
+  .test-card { padding: 20px 24px; }
+  .bars { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .bar-row { display: grid; grid-template-columns: 82px 1fr 54px; align-items: center; gap: 10px; }
+  .bar-row span { font-size: 11.5px; color: #4b5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar { height: 7px; border-radius: 999px; background: #eef1f7; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; border-radius: 999px; background: #c3cddd; transition: width .5s ease; }
+  .bar i.good { background: linear-gradient(90deg, #10b981, #34d399); }
+  .bar i.mid { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .bar i.bad { background: linear-gradient(90deg, #ef4444, #f87171); }
+  .bar-row b { font-size: 11px; color: #6b7280; font-weight: 500; text-align: right; font-variant-numeric: tabular-nums; }
+
+  .scope-card { margin-top: 16px; padding: 20px 24px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .chips span {
+    font-size: 11px; color: #44506a; background: #f5f7fc;
+    border: 1px solid #edf0f7; border-radius: 8px; padding: 5px 9px;
+    font-family: "Cascadia Mono", Consolas, monospace;
+  }
+
+  .logs-card { margin-top: 16px; padding: 20px 24px; }
+  .logs-card pre {
+    margin: 14px 0 0; padding: 14px 16px; border-radius: 12px;
+    background: #0f172a; color: #cbd5e1;
+    font: 11px/1.7 "Cascadia Mono", Consolas, monospace;
+    max-height: 230px; overflow: auto; white-space: pre-wrap; word-break: break-word;
+  }
+
+  .modal {
+    position: fixed; inset: 0; z-index: 80;
+    background: rgba(17, 24, 39, 0.32);
+    backdrop-filter: blur(3px);
+    display: grid; place-items: center;
+  }
+  .modal[hidden] { display: none; }
+  .modal-card {
+    width: 390px; max-width: calc(100% - 40px);
+    background: #fff; border-radius: 18px; padding: 24px;
+    box-shadow: 0 30px 80px rgba(15, 23, 42, 0.28);
+  }
+  .modal-card h3 { margin: 0 0 8px; font-size: 17px; }
+  .modal-card p { margin: 0 0 16px; font-size: 12px; line-height: 1.7; color: var(--muted); }
+  .modal-card label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 10px; }
+  .modal-input {
+    width: 100%; margin-top: 6px; height: 38px;
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 0 12px; font: 13px var(--font); color: var(--text);
+    outline: none; background: #fbfcff;
+  }
+  .modal-input:focus { border-color: var(--blue); background: #fff; }
+  .sms-input {
+    letter-spacing: 7px; font-size: 18px; text-align: center;
+    font-family: "Cascadia Mono", Consolas, monospace;
+  }
+  .modal-actions { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .primary-sm {
+    height: 34px; padding: 0 16px; border: 0; border-radius: 9px;
+    background: var(--blue); color: #fff; font-size: 12.5px; cursor: pointer;
+  }
+  .primary-sm:hover { background: #1d46c3; }
+  .primary-sm:disabled { opacity: .6; cursor: default; }
+  .link.danger { color: var(--red); }
+  .modal-error { min-height: 16px; font-size: 11.5px; color: var(--red); margin-bottom: 4px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(8px);
+    background: rgba(17,24,39,.92); color: #fff; font-size: 12px;
+    padding: 9px 16px; border-radius: 10px; opacity: 0; pointer-events: none;
+    transition: all .2s ease; z-index: 50;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @keyframes pulseDot { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+
+  @media (max-width: 920px) {
+    .sidebar { display: none; }
+    main { padding: 24px 20px 32px; }
+    .grid { grid-template-columns: 1fr; }
+    .hero { flex-wrap: wrap; }
+    .mode-btn { flex: 1; min-width: 160px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">S</div>
+      <div class="brand-text"><b>SDU VPN</b><span>山东大学 · 校园连接</span></div>
+    </div>
+
+    <div class="side-status" id="sideStatus">
+      <span class="dot"></span>
+      <div><b id="sideTitle">未连接</b><small id="sideSub">直连模式</small></div>
+    </div>
+
+    <nav>
+      <button class="nav active">概览</button>
+      <button class="nav" id="logsNav">运行日志</button>
+    </nav>
+
+    <div class="side-foot">
+      <div class="save-badge" id="saveBadge">检查保存的会话…</div>
+      <button class="link" id="credLink">设置自动登录</button>
+      <button class="link" id="openLogs">打开日志目录</button>
+    </div>
+  </aside>
+
+  <main>
+    <header>
+      <div>
+        <h1>校园连接</h1>
+        <p>山东大学 aTrust · 独立客户端</p>
+      </div>
+      <div class="pill" id="pill"><i></i><span>未连接</span></div>
+    </header>
+
+    <section class="hero card">
+      <div class="orb" id="orb">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l7 3v5.2c0 4.5-3 8.1-7 9.8-4-1.7-7-5.3-7-9.8V6l7-3z"/>
+          <path d="M9 12l2 2 4-4.2"/>
+        </svg>
+      </div>
+
+      <div class="hero-copy">
+        <div class="eyebrow">当前状态</div>
+        <h2 id="heroTitle">未连接</h2>
+        <p id="heroMsg">选择「代理」连接校园网络</p>
+        <div class="meta">
+          <div><span>内网 IP</span><b id="ip">—</b></div>
+          <div><span>在线时长</span><b id="uptime">—</b></div>
+          <div><span>会话</span><b id="session">—</b></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="actions-bar">
+      <button class="mode-btn" id="directBtn" data-mode="direct">
+        <span class="mode-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 19L19 5"/><path d="M9 5h10v10"/>
+          </svg>
+        </span>
+        <span><b>直连</b><small>关闭校园代理</small></span>
+      </button>
+      <button class="mode-btn" id="proxyBtn" data-mode="proxy">
+        <span class="mode-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17"/><path d="M12 3.5c2.4 2.4 3.6 5.3 3.6 8.5s-1.2 6.1-3.6 8.5c-2.4-2.4-3.6-5.3-3.6-8.5S9.6 5.9 12 3.5z"/>
+          </svg>
+        </span>
+        <span><b>代理</b><small>校园走 VPN</small></span>
+      </button>
+      <button class="ghost" id="testBtn">手动测速</button>
+    </div>
+
+    <section class="grid">
+      <div class="card proxy-card">
+        <div class="card-head"><h3>本地代理</h3><span class="tag" id="proxyTag">未启动</span></div>
+        <div class="endpoint">
+          <span>SOCKS5</span><code>127.0.0.1:1080</code>
+          <button data-copy="127.0.0.1:1080">复制</button>
+        </div>
+        <div class="endpoint">
+          <span>HTTP</span><code>127.0.0.1:1081</code>
+          <button data-copy="127.0.0.1:1081">复制</button>
+        </div>
+        <label class="sys-proxy">
+          <input type="checkbox" id="sysProxy">
+          <span>同时设置 Windows 系统代理（会暂时接管 Clash）</span>
+        </label>
+        <p class="hint">默认不改动 Clash 的系统代理。勾选后 PAC 只把学校域名和校内网段走 VPN，其余流量仍交给原代理。</p>
+      </div>
+
+      <div class="card test-card">
+        <div class="card-head"><h3>测速</h3><span class="tag" id="testTag">—</span></div>
+        <div class="bars" id="bars">
+          <div class="bar-row"><span>学校主页</span><div class="bar"><i></i></div><b>—</b></div>
+          <div class="bar-row"><span>校内门户</span><div class="bar"><i></i></div><b>—</b></div>
+        </div>
+        <p class="hint">SSH 行会实际执行一次 <code>ssh</code> 登录检查：绿色 = 可登录，黄色 = 认证失败，红色 = 端口不可达。</p>
+      </div>
+    </section>
+
+    <section class="card scope-card">
+      <div class="card-head"><h3>代理范围</h3><span class="tag">自动</span></div>
+      <div class="chips">
+        <span>*.sdu.edu.cn</span><span>vpn.sdu.edu.cn</span><span>10.0.0.0/8</span>
+        <span>172.16.0.0/12</span><span>192.168.0.0/16</span>
+      </div>
+      <p class="hint" id="sshHint">SSH 服务器会自动使用同一代理；直连时自动回落为直连。</p>
+    </section>
+
+    <section class="card logs-card" id="logsCard" hidden>
+      <div class="card-head"><h3>运行日志</h3><button class="link" id="clearLogs">清空显示</button></div>
+      <pre id="logs"></pre>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="credModal" hidden>
+  <div class="modal-card">
+    <h3>自动登录</h3>
+    <p>学校会话过期后，程序会用这里的账号自动完成 CAS 登录。密码使用 Windows DPAPI 加密，只有当前 Windows 用户可以解密。</p>
+    <label>学号<input id="credUser" class="modal-input" autocomplete="username"></label>
+    <label>密码<input id="credPass" class="modal-input" type="password" autocomplete="current-password"></label>
+    <div class="modal-error" id="credError"></div>
+    <div class="modal-actions">
+      <button class="link danger" id="credClear">清除已保存</button>
+      <span style="flex:1"></span>
+      <button class="ghost" id="credCancel">取消</button>
+      <button class="primary-sm" id="credSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="smsModal" hidden>
+  <div class="modal-card">
+    <h3>短信验证码</h3>
+    <p>学校已向 <b id="smsPhone">你的手机</b> 发送验证码，请输入后继续登录。</p>
+    <input id="smsCode" class="modal-input sms-input" maxlength="6" inputmode="numeric" placeholder="6 位验证码">
+    <div class="modal-actions">
+      <button class="link" id="smsCancel">取消</button>
+      <span style="flex:1"></span>
+      <button class="primary-sm" id="smsSubmit">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  let current = null;
+  let lastLogCount = 0;
+  let smsShown = false;
+
+  function api(name, ...args) {
+    return window.pywebview && window.pywebview.api ? window.pywebview.api[name](...args) : Promise.reject("no api");
+  }
+
+  function toast(message) {
+    const el = $("toast");
+    el.textContent = message;
+    el.classList.add("show");
+    clearTimeout(window.__toast);
+    window.__toast = setTimeout(() => el.classList.remove("show"), 1600);
+  }
+
+  function fmtDuration(seconds) {
+    if (!seconds || seconds < 1) return "—";
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}:${String(s).padStart(2, "0")}`;
+  }
+
+  function esc(value) {
+    return String(value).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function renderBars(latency) {
+    const rows = [];
+    const campus = latency && latency.campus;
+    const portal = latency && latency.portal;
+    rows.push(["学校主页", campus]);
+    rows.push(["校内门户", portal]);
+    if (latency && latency.ssh) {
+      for (const item of latency.ssh) rows.push([item.alias, item]);
+    }
+    $("bars").innerHTML = rows.map(([label, row]) => {
+      const ms = row && row.ms;
+      const state = row ? (row.state || (row.ok ? "ok" : "error")) : "";
+      let width = 0;
+      let cls = "";
+      let value = "—";
+      if (row) {
+        if (state === "ok" && row.ok) {
+          width = ms ? Math.min(100, Math.max(4, ms / 6)) : 0;
+          cls = ms < 120 ? "good" : ms < 300 ? "mid" : "bad";
+          value = ms ? ms + " ms" : "OK";
+        } else if (state === "auth_failed") {
+          width = ms ? Math.min(100, Math.max(12, ms / 6)) : 30;
+          cls = "mid";
+          value = "认证失败";
+        } else if (state === "unreachable") {
+          cls = "bad";
+          value = "不可达";
+        } else {
+          cls = "bad";
+          value = "错误";
+        }
+      }
+      return `<div class="bar-row" title="${esc(row && row.error ? row.error : "")}">` +
+             `<span>${esc(label)}</span>` +
+             `<div class="bar"><i class="${cls}" style="width:${width}%"></i></div>` +
+             `<b>${value}</b></div>`;
+    }).join("");
+  }
+
+  function render(state) {
+    current = state;
+    const status = state.status;
+    const connected = status === "connected";
+    const connecting = status === "connecting";
+    const failed = status === "error";
+
+    $("pill").className = "pill " + status;
+    $("pill").querySelector("span").textContent = connected ? "已连接" : connecting ? "连接中" : failed ? "异常" : "未连接";
+
+    const side = $("sideStatus");
+    side.className = "side-status " + status;
+    $("sideTitle").textContent = connected ? "已连接" : connecting ? "正在连接" : failed ? "连接异常" : "未连接";
+    $("sideSub").textContent = state.mode === "proxy" ? "代理模式" : "直连模式";
+
+    $("orb").className = "orb " + status;
+    $("heroTitle").textContent = connected ? "已连接" : connecting ? "正在连接…" : failed ? "连接异常" : state.mode === "proxy" ? "未连接" : "直连模式";
+    $("heroMsg").textContent = state.message || "";
+    $("ip").textContent = state.ip || "—";
+    $("uptime").textContent = connected ? fmtDuration(state.uptime) : "—";
+    $("session").textContent = state.session === "resumed" ? "已复用会话"
+      : state.session === "sso" ? "浏览器会话"
+      : state.session === "auto" ? "自动登录"
+      : state.session === "cas" ? "CAS 登录" : "—";
+
+    $("directBtn").classList.toggle("active", state.mode === "direct" && !connected);
+    $("proxyBtn").classList.toggle("active", state.mode === "proxy");
+    $("directBtn").disabled = connecting;
+    $("proxyBtn").disabled = connecting || connected;
+    $("testBtn").disabled = !connected || state.testing;
+    $("testBtn").textContent = state.testing ? "测速中…" : "手动测速";
+
+    $("proxyTag").textContent = connected ? "运行中" : "未启动";
+    $("proxyTag").className = "tag " + (connected ? "ok" : "");
+    $("sysProxy").checked = !!state.systemProxy;
+    $("testTag").textContent = state.testing ? "测速中" : state.latency ? "刚刚" : "—";
+    $("testTag").className = "tag " + (state.latency ? "ok" : "");
+
+    renderBars(state.latency);
+
+    $("saveBadge").textContent = state.hasSession ? "会话已保存 · 重启免登录" : "尚未保存会话";
+    $("credLink").textContent = state.autoLogin && state.autoLogin.configured
+      ? "自动登录：" + (state.autoLogin.username || "已配置")
+      : "设置自动登录";
+    $("sshHint").textContent = (state.sshHosts && state.sshHosts.length)
+      ? "SSH 代理：" + state.sshHosts.join("、")
+      : "SSH 服务器会自动使用同一代理；直连时自动回落为直连。";
+
+    const prompt = state.smsPrompt;
+    if (prompt) {
+      if (!smsShown) {
+        smsShown = true;
+        $("smsPhone").textContent = prompt.phone || "你的手机";
+        $("smsCode").value = "";
+        $("smsModal").hidden = false;
+        setTimeout(() => $("smsCode").focus(), 80);
+      }
+    } else if (smsShown) {
+      smsShown = false;
+      $("smsModal").hidden = true;
+    }
+
+    if (state.logs) renderLogs(state.logs);
+  }
+
+  function renderLogs(logs) {
+    if (logs.length === lastLogCount) return;
+    lastLogCount = logs.length;
+    const pre = $("logs");
+    const atBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 24;
+    pre.textContent = logs.join("\n");
+    if (atBottom) pre.scrollTop = pre.scrollHeight;
+  }
+
+  async function refresh() {
+    try {
+      const state = await api("get_state");
+      render(state);
+    } catch (e) {
+      /* bridge not ready */
+    }
+  }
+
+  async function setMode(mode) {
+    try {
+      await api("set_mode", mode);
+      if (mode === "proxy") {
+        $("heroMsg").textContent = "正在连接校园网络…";
+      } else {
+        $("heroMsg").textContent = "正在切换直连…";
+      }
+    } catch (e) {
+      toast("操作失败");
+    }
+  }
+
+  async function runTest() {
+    try {
+      const result = await api("test");
+      if (result && result.ok === false) toast(result.error || "请先连接");
+    } catch (e) {
+      toast("测速失败");
+    }
+  }
+
+  function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => toast("已复制 " + text)).catch(() => toast("复制失败"));
+  }
+
+  function toggleLogs() {
+    const card = $("logsCard");
+    card.hidden = !card.hidden;
+    $("logsNav").classList.toggle("active", !card.hidden);
+  }
+
+  function openCred() {
+    $("credError").textContent = "";
+    $("credUser").value = (current && current.autoLogin && current.autoLogin.username) || "";
+    $("credPass").value = "";
+    $("credModal").hidden = false;
+    setTimeout(() => $("credUser").focus(), 60);
+  }
+
+  function closeCred() {
+    $("credModal").hidden = true;
+  }
+
+  async function saveCred() {
+    const user = $("credUser").value.trim();
+    const pass = $("credPass").value;
+    if (!user || !pass) {
+      $("credError").textContent = "学号和密码不能为空";
+      return;
+    }
+    $("credSave").disabled = true;
+    try {
+      const result = await api("save_login", user, pass);
+      if (result.ok) {
+        closeCred();
+        toast("自动登录已保存");
+      } else {
+        $("credError").textContent = result.error || "保存失败";
+      }
+    } catch (e) {
+      $("credError").textContent = "保存失败";
+    } finally {
+      $("credSave").disabled = false;
+    }
+  }
+
+  async function clearCred() {
+    try {
+      await api("clear_login");
+      closeCred();
+      toast("已清除自动登录");
+    } catch (e) {
+      $("credError").textContent = "清除失败";
+    }
+  }
+
+  async function submitSms() {
+    const code = $("smsCode").value.trim();
+    if (!code) {
+      toast("请输入验证码");
+      return;
+    }
+    try {
+      await api("submit_sms", code);
+      $("smsModal").hidden = true;
+      smsShown = false;
+    } catch (e) {
+      toast("提交失败");
+    }
+  }
+
+  async function cancelSms() {
+    try {
+      await api("cancel_sms");
+    } catch (e) {
+      /* ignore */
+    }
+    $("smsModal").hidden = true;
+    smsShown = false;
+  }
+
+  function init() {
+    $("directBtn").addEventListener("click", () => setMode("direct"));
+    $("proxyBtn").addEventListener("click", () => setMode("proxy"));
+    $("testBtn").addEventListener("click", runTest);
+    $("openLogs").addEventListener("click", () => api("open_logs"));
+    $("sysProxy").addEventListener("change", async (event) => {
+      try {
+        const result = await api("set_system_proxy", event.target.checked);
+        if (result && result.ok === false) {
+          toast(result.error || "系统代理设置失败");
+          refresh();
+        } else if (result && result.pending) {
+          toast("连接后生效");
+        } else {
+          toast(event.target.checked ? "已接管系统代理" : "已恢复 Clash/原代理");
+        }
+      } catch (e) {
+        toast("系统代理设置失败");
+        refresh();
+      }
+    });
+    $("credLink").addEventListener("click", openCred);
+    $("credCancel").addEventListener("click", closeCred);
+    $("credSave").addEventListener("click", saveCred);
+    $("credClear").addEventListener("click", clearCred);
+    $("smsSubmit").addEventListener("click", submitSms);
+    $("smsCancel").addEventListener("click", cancelSms);
+    $("smsCode").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") submitSms();
+    });
+    $("credPass").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") saveCred();
+    });
+    $("credModal").addEventListener("click", (e) => {
+      if (e.target.id === "credModal") closeCred();
+    });
+    document.querySelectorAll("[data-copy]").forEach((btn) => {
+      btn.addEventListener("click", () => copyText(btn.dataset.copy));
+    });
+    $("logsNav").addEventListener("click", toggleLogs);
+    $("clearLogs").addEventListener("click", () => {
+      $("logs").textContent = "";
+      lastLogCount = -1;
+    });
+    refresh();
+    setInterval(refresh, 900);
+  }
+
+  document.addEventListener("pywebviewready", init);
+  window.addEventListener("DOMContentLoaded", () => {
+    if (!window.pywebview) {
+      setTimeout(() => {
+        if (window.pywebview) init();
+      }, 300);
+    }
+  });
+</script>
+</body>
+</html>
