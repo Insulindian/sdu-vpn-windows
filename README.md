@@ -16,7 +16,7 @@ SOCKS5 / HTTP 代理访问校园网，不安装也不调用官方 aTrust 客户�
 要求 Windows 10/11、Python 3.11+、WebView2 Runtime（Windows 11 自带）。
 
 ```powershell
-git clone <仓库地址>
+git clone https://github.com/Insulindian/sdu-vpn-windows.git
 cd sdu-vpn-windows
 powershell -ExecutionPolicy Bypass -File windows\install.ps1
 ```
@@ -37,13 +37,13 @@ powershell -ExecutionPolicy Bypass -File windows\install.ps1
 ## 工作原理
 
 ```
-Chromium 真实 CAS 页 ──ticket──▶ sdu_connect（本机 Python）
-                                      │ ticket → aTrust 网关
-                                      ▼
-                              sid + device-id + resource
-                                      │
-                                      ▼
-                    zju-connect.exe（SOCKS5 :1080 / HTTP :1081）
+浏览器（真实 CAS 页面）
+   │ ticket
+   ▼
+sdu_connect（本机 Python）—— ticket → aTrust 网关 → sid + device-id + resource
+   │
+   ▼
+zju-connect.exe —— SOCKS5 127.0.0.1:1080 / HTTP 127.0.0.1:1081
 ```
 
 票据只换一次会话，换到的 sid 交给数据面复用，浏览器再刷新也不会把会话踢掉。
